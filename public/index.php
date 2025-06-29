@@ -14,4 +14,14 @@ $app->get('/', function ($request, $response) {
     // Благодаря пакету slim/http этот же код можно записать короче
     // return $response->write('Welcome to Slim!');
 });
+
+$app->get('/users', function ($request, $response) {
+    $response->getBody()->write('GET /users');
+    return $response;
+});
+
+$app->post('/users', function ($request, $response) {
+    return $response->withStatus(302);
+});
+
 $app->run();
