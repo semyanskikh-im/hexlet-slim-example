@@ -19,9 +19,8 @@ $app->addErrorMiddleware(true, true, true);
 $app->get('/', function ($request, $response) {
     $response->getBody()->write('Welcome to Slim!');
     return $response;
-    // Благодаря пакету slim/http этот же код можно записать короче
-    // return $response->write('Welcome to Slim!');
-});
+})->setName('/');
+
 
 $app->get('/users', function ($request, $response) use ($users) {
     $search = $request->getQueryParams();
@@ -35,10 +34,22 @@ $app->get('/users', function ($request, $response) use ($users) {
     
     // $response->getBody()->write($users);
     // return $response;
-});
+})->setName('/users');
+
 
 $app->post('/users', function ($request, $response) {
-    return $response->withStatus(302);
+    $body = $request->getParsedBody();
+    $user = $body['user'];
+    $user['id'] = uniqid();
+    $path = __DIR__ . '/../bd/users.json';
+    $users = json_decode(file_get_contents($path), true) ?? [];
+    $users[] = $user;
+
+    file_put_contents($path, json_encode($users, JSON_PRETTY_PRINT));
+
+    return $response
+        ->withHeader('Location', '/users')
+        ->withStatus(302);
 });
 
 $app->get('/courses/{id}', function ($request, $response, array $args) {
@@ -48,12 +59,35 @@ $app->get('/courses/{id}', function ($request, $response, array $args) {
 });
 
 
-$app->get('/users/{id}', function ($request, $response, $args) {
-    $params = ['id' => $args['id'], 'nickname' => 'user-' . $args['id']];
-    // Указанный путь считается относительно базовой директории для шаблонов, заданной на этапе конфигурации
-    // $this доступен внутри анонимной функции благодаря https://php.net/manual/ru/closure.bindto.php
-    // $this в Slim это контейнер зависимостей
-    return $this->get('renderer')->render($response, 'users/show.phtml', $params);
+// $app->get('/users/{id}', function ($request, $response, $args) {
+//     $params = ['id' => $args['id'], 'nickname' => 'user-' . $args['id']];
+//     // Указанный путь считается относительно базовой директории для шаблонов, заданной на этапе конфигурации
+//     // $this доступен внутри анонимной функции благодаря https://php.net/manual/ru/closure.bindto.php
+//     // $this в Slim это контейнер зависимостей
+//     return $this->get('renderer')->render($response, 'users/show.phtml', $params);
+// });
+
+$app->get('/users/new', function ($request, $response) {
+    $params = ['user' => [
+                    'nickname' => '',
+                    'email' => ''
+                    ]
+             ];    
+    
+    
+    return $this->get('renderer')->render($response, 'users/new.phtml', $params);
+})->setName('/users/new');
+
+// Получаем роутер — объект, отвечающий за хранение и обработку маршрутов
+$router = $app->getRouteCollector()->getRouteParser();
+
+//Роутер прокинут в обработчик
+$app->get('', function ($request, $response) use ($router) {
+    $router->urlFor('/');
+    $router->urlFor('/users');
+    $router->urlFor('/users/new');
+     return $response;
 });
+
 
 $app->run();
